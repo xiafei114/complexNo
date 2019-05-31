@@ -1,8 +1,6 @@
 package seqno
 
 import (
-	"fmt"
-
 	"github.com/jinzhu/gorm"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -37,28 +35,22 @@ type DocNo struct {
 	logicID          string
 	formateCode      string
 	markCode         string //lua代码
-	scriptCode       string
 	step             int64
 	remark           string
-	gainMark         string   //通过lua生成出来的
-	elements         []string // 生成使用的元素
+	gainMark         string //通过lua生成出来的
 	documentStandard *DocumentStandard
 }
 
 // NewNoGenerator 初始化新代理
 func NewNoGenerator(db *gorm.DB, logicID string) *DocNo {
-	elements := []string{"M"}
-
 	return &DocNo{
 		conn:        db,
 		currentNum:  0,
 		logicID:     logicID,
 		formateCode: "%s%06d",
 		markCode:    "",
-		scriptCode:  "M",
 		step:        1,
 		remark:      "",
-		elements:    elements,
 	}
 }
 
@@ -92,12 +84,6 @@ func (s *DocNo) MarkCode(markCode string) *DocNo {
 	return s
 }
 
-// ScriptCode 脚本代码
-func (s *DocNo) ScriptCode(scriptCode string) *DocNo {
-	s.scriptCode = scriptCode
-	return s
-}
-
 // Remark 备注
 func (s *DocNo) Remark(remark string) *DocNo {
 	s.remark = remark
@@ -105,14 +91,8 @@ func (s *DocNo) Remark(remark string) *DocNo {
 }
 
 // Next 返回序列号
-func (s *DocNo) Next() (string, error) {
+func (s *DocNo) Next() (int64, error) {
 	return s.next()
-}
-
-// Elements 生成单号需要的元素
-func (s *DocNo) Elements(elements []string) *DocNo {
-	s.elements = elements
-	return s
 }
 
 // 通过lua生成mark
@@ -127,7 +107,7 @@ func (s *DocNo) gainElements(L *lua.LState) []string {
 }
 
 // 返回
-func (s *DocNo) next() (string, error) {
+func (s *DocNo) next() (int64, error) {
 	L := lua.NewState()
 	defer L.Close()
 	s = s.findDocumentStandard()
@@ -148,7 +128,7 @@ func (s *DocNo) next() (string, error) {
 
 	s.conn.Model(dgn).Update("current_Num", s.currentNum)
 
-	return fmt.Sprintf(s.formateCode, s.elements), nil
+	return s.currentNum, nil
 
 }
 
@@ -161,7 +141,6 @@ func (s *DocNo) findDocumentStandard() *DocNo {
 			LogicID:     s.logicID,
 			FormateCode: s.formateCode,
 			MarkCode:    s.markCode,
-			ScriptCode:  s.scriptCode,
 			StepNum:     s.step,
 			Remark:      s.remark,
 		}
@@ -171,7 +150,6 @@ func (s *DocNo) findDocumentStandard() *DocNo {
 		s.formateCode = ds.FormateCode
 		s.markCode = ds.MarkCode
 		s.step = ds.StepNum
-		s.scriptCode = ds.ScriptCode
 		s.step = ds.StepNum
 		s.remark = ds.Remark
 		s.documentStandard = &ds

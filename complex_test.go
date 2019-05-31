@@ -18,11 +18,13 @@ func TestNext(t *testing.T) {
 
 	InitTable(db)
 
-	num, err := NewNoGenerator(db, "Order").Next()
+	no := NewNoGenerator(db, "Order")
+
+	num, err := no.Next()
 	if err != nil {
 		fmt.Println(fmt.Sprintln(err))
 	}
-	fmt.Printf("%s\n", num)
+	fmt.Printf("%s\n", fmt.Sprintf(no.formateCode, "M", num))
 }
 
 // func TestGoroutine(t *testing.T) {
